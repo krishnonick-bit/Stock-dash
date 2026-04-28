@@ -19,13 +19,13 @@
     <div class="max-w-4xl w-full glass-card rounded-[2rem] shadow-2xl overflow-hidden p-8 md:p-12">
         <div class="mb-10 text-center">
             <h1 class="text-4xl font-bold text-indigo-900 mb-4">מחלץ נתונים פיננסיים</h1>
-            <p class="text-gray-600">הזן סימולי מניות (כמו AAPL, MSFT) ובחר טווח תאריכים.</p>
+            <p class="text-gray-600">הזן סימולי מניות, בחר תאריכים ולחץ על טען.</p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div class="md:col-span-2">
-                <label class="block text-sm font-semibold mb-2">סימולי מניות</label>
-                <input id="tickers" type="text" value="AAPL, TSLA" class="w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-indigo-500">
+                <label class="block text-sm font-semibold mb-2">סימולי מניות (AAPL, TSLA...)</label>
+                <input id="tickers" type="text" value="AAPL, MSFT" class="w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-indigo-500 text-left" dir="ltr">
             </div>
             <div>
                 <label class="block text-sm font-semibold mb-2">תאריך התחלה</label>
@@ -51,20 +51,21 @@
 
         <div id="alertBox" class="hidden mt-6 p-4 rounded-xl text-center font-medium"></div>
 
-        <div id="previewContainer" class="mt-12 hidden">
+        <div id="previewContainer" class="mt-12 hidden text-right">
+            <h3 class="font-bold mb-2">תצוגה מקדימה:</h3>
             <div class="overflow-x-auto rounded-xl border bg-white/50 mb-6">
                 <table id="previewTable" class="w-full text-sm text-right"></table>
             </div>
             <div class="flex gap-4 justify-center">
-                <button onclick="downloadCSV()" class="px-6 py-2 bg-emerald-500 text-white rounded-lg font-semibold">CSV</button>
-                <button onclick="exportToSheets()" class="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold">Google Sheets</button>
+                <button onclick="downloadCSV()" class="px-6 py-2 bg-emerald-500 text-white rounded-lg font-semibold">הורד CSV</button>
+                <button onclick="exportToSheets()" class="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold">פתח ב-Google Sheets</button>
             </div>
         </div>
     </div>
 
     <script>
-        // וודא שה-URL הזה מעודכן מה-Deployment בגוגל
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz8IsrljmkNlQphMsebLrcfnWdp1kULCKJe2GHT50A3MSi2AyAbi_0_4tobqqfbSoWG/exec";
+        // הכתובת החדשה שלך:
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx2JRMyrslQVjrus_RZJbr_emYkWDDlh23DjJ4oIFG5I0xr7qX6qKRB7ag-J0v2riZD/exec";
         let globalCSVData = "";
 
         function showAlert(msg, isError = true) {
@@ -75,7 +76,6 @@
         }
 
         async function fetchMarketData() {
-            console.log("קריאה לפונקציה fetchMarketData הופעלה");
             const tickers = document.getElementById('tickers').value;
             const startDate = document.getElementById('startDate').value;
             const endDate = document.getElementById('endDate').value;
@@ -83,12 +83,14 @@
             if (!tickers || !startDate || !endDate) { showAlert("מלא את כל השדות"); return; }
 
             document.getElementById('loader').classList.remove('hidden');
-            document.getElementById('btnText').innerText = "טוען...";
+            document.getElementById('btnText').innerText = "מתקשר עם גוגל...";
             document.getElementById('mainBtn').disabled = true;
 
             try {
+                // שליחת POST לשרת
                 const response = await fetch(WEB_APP_URL, {
                     method: 'POST',
+                    mode: 'cors', // הוספת מצב CORS מפורש
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify({
                         tickers, startDate, endDate, 
@@ -96,14 +98,17 @@
                         action: 'csv'
                     })
                 });
+
+                if (!response.ok) throw new Error("HTTP error! status: " + response.status);
+
                 const result = await response.json();
                 if (result.status === "success") {
                     globalCSVData = result.csvData;
                     buildPreview(result.csvData);
                 } else { showAlert(result.message); }
             } catch (err) {
-                showAlert("שגיאת תקשורת - בדוק את ה-URL וההרשאות");
-                console.error(err);
+                console.error("Fetch error:", err);
+                showAlert("שגיאה: וודא שביצעת Deploy כ-Web App ל-Anyone ואישרת הרשאות.");
             } finally {
                 document.getElementById('loader').classList.add('hidden');
                 document.getElementById('btnText').innerText = "טען נתונים";
@@ -115,22 +120,22 @@
             const rows = csv.trim().split('\n').slice(0, 6);
             let h = "";
             rows.forEach((r, i) => {
-                h += `<tr>${r.split(',').map(c => `<${i? 'td':'th'} class="p-3 border-b">${c}</${i? 'td':'th'}>`).join('')}</tr>`;
+                h += `<tr>${r.split(',').map(c => `<${i? 'td':'th'} class="p-3 border-b text-right">${c}</${i? 'td':'th'}>`).join('')}</tr>`;
             });
             document.getElementById('previewTable').innerHTML = h;
             document.getElementById('previewContainer').classList.remove('hidden');
         }
 
         function downloadCSV() {
-            const blob = new Blob([globalCSVData], { type: 'text/csv' });
+            const blob = new Blob([globalCSVData], { type: 'text/csv;charset=utf-8' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            a.download = 'Stocks.csv';
+            a.download = 'Market_Data.csv';
             a.click();
         }
 
         async function exportToSheets() {
-            showAlert("מייצא...", false);
+            showAlert("מייצא לגליון חדש...", false);
             try {
                 const response = await fetch(WEB_APP_URL, {
                     method: 'POST',
