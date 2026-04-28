@@ -3,37 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>מערכת חילוץ נתונים פיננסיים</title>
+    <title>מחלץ נתונים פיננסיים - גרסה יציבה</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body { 
             font-family: 'Assistant', sans-serif; 
-            background: linear-gradient(-45deg, #0f172a, #1e293b, #334155, #1e1b4b);
-            background-size: 400% 400%;
-            animation: gradient 15s ease infinite;
+            background: radial-gradient(circle at top right, #1e293b, #0f172a);
             min-height: 100vh; 
             display: flex; 
             align-items: center; 
             justify-content: center; 
             padding: 20px; 
+            color: #f8fafc;
         }
-        @keyframes gradient { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
         .card { 
-            background: rgba(255, 255, 255, 0.9); 
-            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95); 
             border-radius: 24px; 
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); 
             width: 100%; 
             max-width: 650px; 
             padding: 40px; 
+            color: #1e293b;
         }
         .loader { 
             border: 3px solid #f3f3f3; 
             border-top: 3px solid #4f46e5; 
             border-radius: 50%; 
-            width: 20px; 
-            height: 20px; 
+            width: 20px; height: 20px; 
             animation: spin 1s linear infinite; 
             display: inline-block; 
         }
@@ -45,106 +42,92 @@
 <div class="card">
     <div class="text-center mb-8">
         <h1 class="text-4xl font-bold text-indigo-900 mb-2">מחלץ נתונים פיננסיים</h1>
-        <p class="text-gray-600">הזינו סימולי מניות וטווח תאריכים לחילוץ היסטוריית מחירים</p>
+        <p class="text-gray-600 font-medium">גרסת הגיבוי היציבה (GOOGLEFINANCE)</p>
     </div>
     
     <div class="space-y-5">
         <div>
-            <label class="block text-sm font-bold text-indigo-900 mb-1">סימולי מניות (באנגלית, מופרדים בפסיק)</label>
-            <input id="tickers" type="text" value="AAPL, TSLA, MSFT" 
-                   class="w-full p-4 border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm text-left" dir="ltr">
+            <label class="block text-sm font-bold text-indigo-900 mb-1">סימולי מניות (לדוגמה: AAPL, TSLA)</label>
+            <input id="tickers" type="text" placeholder="AAPL, MSFT" 
+                   class="w-full p-4 border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm text-left font-mono" dir="ltr">
         </div>
         
         <div class="grid grid-cols-2 gap-4">
             <div>
                 <label class="block text-sm font-bold text-indigo-900 mb-1">תאריך התחלה</label>
-                <input id="startDate" type="date" value="2025-01-01" class="w-full p-4 border border-indigo-100 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm">
+                <input id="startDate" type="date" class="w-full p-4 border border-indigo-100 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm">
             </div>
             <div>
                 <label class="block text-sm font-bold text-indigo-900 mb-1">תאריך סיום</label>
-                <input id="endDate" type="date" value="2026-04-29" class="w-full p-4 border border-indigo-100 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm">
+                <input id="endDate" type="date" class="w-full p-4 border border-indigo-100 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm">
             </div>
         </div>
 
         <div>
-            <label class="block text-sm font-bold text-indigo-900 mb-1">תדירות נתונים</label>
+            <label class="block text-sm font-bold text-indigo-900 mb-1">תדירות</label>
             <select id="frequency" class="w-full p-4 border border-indigo-100 rounded-xl bg-white outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm">
-                <option value="daily">יומי (Daily)</option>
-                <option value="weekly">שבועי (Weekly)</option>
-                <option value="monthly">חודשי (Monthly)</option>
+                <option value="daily">יומי</option>
+                <option value="weekly">שבועי</option>
             </select>
         </div>
 
-        <button onclick="runExtraction()" id="btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-3">
+        <button onclick="run()" id="btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-3">
             <span id="loaderIcon" class="hidden loader"></span>
-            <span id="btnText">שלוף נתונים</span>
+            <span id="btnText">טען נתונים מהבורסה</span>
         </button>
     </div>
 
     <div id="msg" class="mt-6 hidden p-4 rounded-xl text-center font-semibold"></div>
 
     <div id="previewArea" class="mt-10 hidden border-t pt-8">
-        <h3 class="text-xl font-bold text-indigo-900 mb-4">תצוגה מקדימה (שורות ראשונות)</h3>
-        <div class="overflow-x-auto border border-indigo-50 rounded-xl shadow-inner bg-white/50">
+        <div class="overflow-x-auto border border-indigo-50 rounded-xl shadow-inner bg-white">
             <table id="dataTable" class="w-full text-sm text-right"></table>
         </div>
         <div class="grid grid-cols-2 gap-4 mt-6">
-            <button onclick="downloadAsCsv()" class="bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl font-bold shadow-md transition-all">הורד קובץ CSV</button>
-            <button onclick="exportToGoogleSheets()" class="bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold shadow-md transition-all">ייצא ל-Google Sheets</button>
+            <button onclick="downloadAsCsv()" class="bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl font-bold shadow-md">הורד CSV</button>
+            <button onclick="exportToSheets()" class="bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold shadow-md">ייצא ל-Google Sheets</button>
         </div>
     </div>
 </div>
 
 <script>
-    // ה-URL המעודכן שלך
+    // *** חובה: הדבק כאן את ה-URL החדש שתקבל אחרי ה-Deploy החדש ***
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyc4Ak3VyYpeF2gnuyuPpwJBL6A1VQVMDybjyqfxoUlhd7AiMX-9Td6T-uaWs_YljlKog/exec";
     
-    let csvStorage = "";
+    let csvData = "";
 
-    function updateUI(status) {
-        const btn = document.getElementById('btn');
-        const ldr = document.getElementById('loaderIcon');
-        const txt = document.getElementById('btnText');
-        
-        if (status === 'loading') {
-            btn.disabled = true;
-            ldr.classList.remove('hidden');
-            txt.innerText = "מושך נתונים מהבורסה...";
-            document.getElementById('msg').classList.add('hidden');
-        } else {
-            btn.disabled = false;
-            ldr.classList.add('hidden');
-            txt.innerText = "שלוף נתונים";
-        }
-    }
-
-    function displayMessage(text, isError = true) {
+    function showStatus(text, isError = true) {
         const m = document.getElementById('msg');
         m.innerText = text;
         m.className = `mt-6 p-4 rounded-xl text-center font-semibold ${isError ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`;
         m.classList.remove('hidden');
     }
 
-    async function runExtraction() {
+    async function run() {
+        const btn = document.getElementById('btn');
+        const ldr = document.getElementById('loaderIcon');
+        const txt = document.getElementById('btnText');
+        
         const tickers = document.getElementById('tickers').value;
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
-        
-        if (!tickers || !startDate || !endDate) {
-            displayMessage("אופס! חובה להזין מניות ותאריכים.");
+
+        if(!tickers || !startDate || !endDate) {
+            showStatus("נא למלא את כל השדות");
             return;
         }
 
-        updateUI('loading');
+        btn.disabled = true;
+        ldr.classList.remove('hidden');
+        txt.innerText = "מתקשר עם גוגל...";
+        document.getElementById('msg').classList.add('hidden');
 
         try {
             const response = await fetch(WEB_APP_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify({
-                    tickers,
-                    startDate,
-                    endDate,
+                    tickers, startDate, endDate,
                     frequency: document.getElementById('frequency').value,
                     action: 'csv'
                 })
@@ -153,32 +136,32 @@
             const result = await response.json();
 
             if (result.status === 'success') {
-                csvStorage = result.csvData;
-                renderPreviewTable(result.csvData);
+                csvData = result.csvData;
+                renderTable(result.csvData);
                 document.getElementById('previewArea').classList.remove('hidden');
-                displayMessage("הנתונים נשלפו בהצלחה!", false);
+                showStatus("הנתונים נטענו בהצלחה!", false);
             } else {
-                displayMessage("שגיאת שרת: " + result.message);
+                showStatus("שגיאת שרת: " + result.message);
             }
-        } catch (error) {
-            console.error(error);
-            displayMessage("תקלה בתקשורת. וודא שהסקריפט מפורסם כ-Web App ל-Anyone.");
+        } catch (e) {
+            showStatus("תקלה בתקשורת. וודא שביצעת Deploy מחדש ל-Anyone.");
         } finally {
-            updateUI('idle');
+            btn.disabled = false;
+            ldr.classList.add('hidden');
+            txt.innerText = "טען נתונים מהבורסה";
         }
     }
 
-    function renderPreviewTable(csvContent) {
-        const rows = csvContent.trim().split('\n').slice(0, 6); // הצגת כותרת + 5 שורות ראשונות
+    function renderTable(csv) {
+        const rows = csv.trim().split('\n').slice(0, 6);
         let html = "";
         rows.forEach((row, i) => {
             const cells = row.split(',');
             html += `<tr>`;
             cells.forEach(cell => {
                 const tag = i === 0 ? 'th' : 'td';
-                const baseClass = "p-3 border-b border-indigo-50";
-                const extraClass = i === 0 ? "bg-indigo-50/50 font-bold text-indigo-900" : "text-gray-700";
-                html += `<${tag} class="${baseClass} ${extraClass}">${cell}</${tag}>`;
+                const cls = i === 0 ? "bg-gray-100 font-bold p-3 border-b" : "p-3 border-b";
+                html += `<${tag} class="${cls}">${cell}</${tag}>`;
             });
             html += `</tr>`;
         });
@@ -186,17 +169,15 @@
     }
 
     function downloadAsCsv() {
-        if (!csvStorage) return;
-        const blob = new Blob([csvStorage], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        const url = window.URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", `StockData_${new Date().toISOString().slice(0,10)}.csv`);
-        link.click();
+        const blob = new Blob([csvData], { type: 'text/csv' });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "Market_Data.csv";
+        a.click();
     }
 
-    async function exportToGoogleSheets() {
-        displayMessage("יוצר גליון Google Sheets חדש... אנא המתן", false);
+    async function exportToSheets() {
+        showStatus("יוצר גליון גוגל... אנא המתן", false);
         try {
             const response = await fetch(WEB_APP_URL, {
                 method: 'POST',
@@ -209,16 +190,9 @@
                     action: 'sheet'
                 })
             });
-            const result = await response.json();
-            if (result.status === 'success') {
-                displayMessage("הגליון נוצר! פותח בטאב חדש...", false);
-                window.open(result.sheetUrl, '_blank');
-            } else {
-                displayMessage("שגיאה בייצוא: " + result.message);
-            }
-        } catch (e) {
-            displayMessage("תקלה בייצוא לגליון.");
-        }
+            const res = await response.json();
+            if (res.status === 'success') window.open(res.sheetUrl, '_blank');
+        } catch (e) { showStatus("תקלה בייצוא"); }
     }
 </script>
 
