@@ -27,14 +27,13 @@
         <div class="p-8 md:p-12">
             <div class="mb-10 text-center">
                 <h1 class="text-4xl font-bold text-indigo-900 mb-4">מחלץ נתונים פיננסיים</h1>
-                <p class="text-gray-600 text-lg leading-relaxed">שלום! כאן תוכלו לשלוף שערי סגירה למספר מניות במקביל, להשוות ביניהן בסדרות-זמן, ולייצא בקליק.</p>
+                <p class="text-gray-600 text-lg leading-relaxed">ברוכים הבאים. כאן תוכלו לשלוף שערי סגירה למספר מניות במקביל ולייצא אותם בקלות.</p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-semibold text-indigo-900 mb-2">סימולי מניות</label>
+                    <label class="block text-sm font-semibold text-indigo-900 mb-2">סימולי מניות (מופרדים בפסיק)</label>
                     <input id="tickers" type="text" placeholder="AAPL, TSLA, MSFT" class="w-full px-4 py-3 rounded-xl border border-indigo-100 outline-none focus:ring-2 focus:ring-indigo-500">
-                    <p class="text-xs text-gray-500 mt-1">הזן סימולי מניות, מופרדים בפסיק</p>
                 </div>
                 <div>
                     <label class="block text-sm font-semibold text-indigo-900 mb-2">תאריך התחלה</label>
@@ -62,20 +61,19 @@
             <div id="alertBox" class="hidden mt-6 p-4 rounded-xl text-center font-medium"></div>
 
             <div id="previewContainer" class="mt-12 hidden">
-                <h3 class="text-xl font-bold text-indigo-900 mb-4 border-b pb-2">תצוגה מקדימה</h3>
+                <h3 class="text-xl font-bold text-indigo-900 mb-4 border-b pb-2 text-right">תצוגה מקדימה</h3>
                 <div class="overflow-x-auto rounded-xl border border-indigo-50 bg-white/50">
                     <table id="previewTable" class="w-full text-sm text-right"></table>
                 </div>
                 <div id="exportButtons" class="mt-8 flex flex-col md:flex-row gap-4 justify-center">
-                    <button onclick="downloadCSV()" class="px-8 py-3 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors shadow-lg font-semibold">הורד כ-CSV</button>
-                    <button onclick="exportToSheets()" class="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg font-semibold">ייצא ל-Google Sheets</button>
+                    <button onclick="downloadCSV()" class="px-8 py-3 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 shadow-lg font-semibold">הורד כ-CSV</button>
+                    <button onclick="exportToSheets()" class="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-lg font-semibold">ייצא ל-Google Sheets</button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // ה-URL המעודכן שלך מוטמע כאן למטה:
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz8IsrljmkNlQphMsebLrcfnWdp1kULCKJe2GHT50A3MSi2AyAbi_0_4tobqqfbSoWG/exec";
         let globalCSVData = "";
 
@@ -87,13 +85,102 @@
         }
 
         async function fetchMarketData() {
+            console.log("מתחיל משיכת נתונים...");
             const tickers = document.getElementById('tickers').value;
             const startDate = document.getElementById('startDate').value;
             const endDate = document.getElementById('endDate').value;
             
             if (!tickers || !startDate || !endDate) { showAlert("חובה למלא את כל השדות."); return; }
-            if (new Date(startDate) > new Date(endDate)) { showAlert("תאריך ההתחלה חייב להיות לפני תאריך הסיום."); return; }
 
             document.getElementById('alertBox').classList.add('hidden');
             document.getElementById('loader').classList.remove('hidden');
-            document.getElementById('btn
+            document.getElementById('btnText').innerText = "מעבד נתונים...";
+            document.getElementById('mainBtn').disabled = true;
+
+            const payload = {
+                tickers: tickers,
+                startDate: startDate,
+                endDate: endDate,
+                frequency: document.getElementById('frequency').value,
+                action: 'csv'
+            };
+
+            console.log("Payload:", payload);
+
+            try {
+                const response = await fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+                console.log("תגובת שרת:", result);
+
+                if (result.status === "success") {
+                    globalCSVData = result.csvData;
+                    buildPreview(result.csvData);
+                } else { 
+                    showAlert("שגיאת שרת: " + result.message); 
+                }
+            } catch (err) {
+                console.error("שגיאת Fetch:", err);
+                showAlert("תקלה בתקשורת. וודא שהסקריפט מפורסם ל-'Anyone' ושאישרת הרשאות גוגל.");
+            } finally {
+                document.getElementById('loader').classList.add('hidden');
+                document.getElementById('btnText').innerText = "טען נתונים";
+                document.getElementById('mainBtn').disabled = false;
+            }
+        }
+
+        function buildPreview(csvText) {
+            const rows = csvText.trim().split('\n').slice(0, 7);
+            let html = "";
+            rows.forEach((row, idx) => {
+                const cols = row.split(',');
+                html += `<tr>`;
+                cols.forEach(col => {
+                    const tag = idx === 0 ? 'th' : 'td';
+                    const css = idx === 0 ? 'bg-indigo-50 p-3 font-bold border-b' : 'p-3 border-b';
+                    html += `<${tag} class="${css}">${col}</${tag}>`;
+                });
+                html += `</tr>`;
+            });
+            document.getElementById('previewTable').innerHTML = html;
+            document.getElementById('previewContainer').classList.remove('hidden');
+            document.getElementById('previewContainer').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function downloadCSV() {
+            const blob = new Blob([globalCSVData], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute("download", "StockData.csv");
+            link.click();
+        }
+
+        async function exportToSheets() {
+            showAlert("מייצר גליון גוגל...", false);
+            const payload = {
+                tickers: document.getElementById('tickers').value,
+                startDate: document.getElementById('startDate').value,
+                endDate: document.getElementById('endDate').value,
+                frequency: document.getElementById('frequency').value,
+                action: 'sheet'
+            };
+            try {
+                const response = await fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                if (result.status === "success") {
+                    showAlert("הייצוא הצליח!", false);
+                    window.open(result.sheetUrl, '_blank');
+                } else { showAlert("שגיאה: " + result.message); }
+            } catch (e) { showAlert("תקלה בייצוא."); }
+        }
+    </script>
+</body>
+</html>
